@@ -4,6 +4,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.text.DefaultEditorKit;
@@ -12,28 +13,37 @@ import javax.swing.text.JTextComponent.KeyBinding;
 
 public class Calculadora {
 	static int value = 0;
-	public static void main(String[] args) {
-		int valor;
-		JFrame f = new JFrame("Conversor");
 
+	public static void main(String[] args) {
+
+		JFrame f = new JFrame("Conversor");
 		f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		f.setSize(320, 90);
 		f.setResizable(false);
 		f.setLocationRelativeTo(null);
 		f.setVisible(true);
+		JLabel b = new JLabel("Binário");
+		JLabel d = new JLabel("Decimal");
+		JLabel h  = new JLabel("Hexadecimal");
 		JTextField binary = new JTextField();
 		JTextField decimal = new JTextField();
 		JTextField hexa = new JTextField();
+		f.add(b);
+		f.add(d);
+		f.add(h);
 		f.add(binary);
 		f.add(decimal);
 		f.add(hexa);
-		binary.setBounds(0,15,100, 30);
-		decimal.setBounds(110,15,100, 30);
-		hexa.setBounds(220,15,100, 30);
+		b.setBounds(25, 7, 100, 10);
+		d.setBounds(135, 7, 100, 10);
+		h.setBounds(225, 7, 100, 10);
+		binary.setBounds(0,20,100, 30);
+		decimal.setBounds(110,20,100, 30);
+		hexa.setBounds(220,20,100, 30);
 		binary.addKeyListener(new KeyAdapter() {
 			public void keyTyped(KeyEvent e) {
 				char c = e.getKeyChar();
-				if (!((c >= '0') && (c <= '1') ||
+				if (!((c=='+')||(c=='-')||(c=='*')||(c >= '0') && (c <= '1') ||
 						(c == KeyEvent.VK_BACK_SPACE) ||
 						(c == KeyEvent.VK_DELETE))) {
 					e.consume();
@@ -43,12 +53,18 @@ public class Calculadora {
 			@Override
 			public void keyReleased(KeyEvent e) {
 				char c = e.getKeyChar();
-				if (!((c >= '0') && (c <= '1') ||
+				if (!((c=='+')||(c=='-')||(c=='*')||(c >= '0') && (c <= '1') ||
 						(c == KeyEvent.VK_BACK_SPACE) ||
 						(c == KeyEvent.VK_DELETE))) {
 					return;
 				}
-				convert(binary.getText(), 1);
+				String texto = binary.getText();
+				// método para cálculo
+				if (texto.matches("[01]+[*\\-+][01]+")) {
+					calculate(texto);
+				} else if(texto.matches("[01]+")) {
+					convert(texto, 1);
+				}
 			}
 		});
 		decimal.addKeyListener(new KeyAdapter() {
@@ -118,9 +134,74 @@ public class Calculadora {
 		hexa.addKeyListener(lo);
 
 		KeyBinding[] bind  = {new JTextComponent.KeyBinding(
-		          KeyStroke.getKeyStroke(KeyEvent.VK_V, InputEvent.CTRL_MASK),
-		          DefaultEditorKit.beepAction)};
+				KeyStroke.getKeyStroke(KeyEvent.VK_V, InputEvent.CTRL_MASK),
+				DefaultEditorKit.beepAction)};
 		JTextComponent.loadKeymap(binary.getKeymap(), bind, binary.getActions());
+	}
+	protected static void calculate(String texto) {
+		StringBuilder builder = new StringBuilder();
+		value = 0;
+		if (texto.contains("+")) {
+			// soma
+			byte[] result;
+			String[] array = texto.split("\\+");
+			builder.append(array[0]);
+			array[0] = builder.reverse().toString();
+			builder.delete(0, builder.length());
+			builder.append(array[1]);
+			array[1] = builder.reverse().toString();
+			builder.delete(0, builder.length());
+
+			if (array[0].length() > array[1].length()) {
+				result = new byte[array[0].length()+1];
+			}else {
+				result = new byte[array[1].length()+1];
+			}
+			for (int i = 0; i < result.length-1; i++) {
+				char b1;
+				char b2;
+				if (array[0].length() > i) {
+					b1 = array[0].charAt(i);
+				} else {
+					b1 = '0';
+				}
+				if (array[1].length() > i) {
+					b2 = array[1].charAt(i);
+				} else {
+					b2 = '0';
+				}
+				// comparação (soma)
+				if (b1 == '0'&& b2 == '0') {
+					if (result[i] != 1) {
+						result[i] = 0;
+					}
+				} else if ((b1 == '1'&& b2 == '0')||(b1 == '0'&& b2 == '1')) {
+					if (result[i] != 1) {
+						result[i] = 1;
+					} else {
+						result[i] = 0;
+						result[i+1] = 1;
+					}
+				} else if (b1 == '1'&& b2 == '1') {
+					if (result[i] != 1) {
+						result[i] = 0;
+						result[i+1] = 1;
+					} else {
+						result[i] = 1;
+						result[i+1] = 1;
+					}
+				}
+			}
+			for (int i = 0, pow = 1; i < result.length; i++, pow *= 2) {
+				value += result[i] * pow;
+			}
+		}else if (texto.contains("-")) {
+			// subtração
+
+		}else {
+			// multiplicação
+
+		}
 	}
 	protected static String toBinary() {
 		int a = value;
