@@ -2,6 +2,7 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.util.Arrays;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -183,6 +184,7 @@ public class Calculadora {
 						result[i+1] = 1;
 					}
 				} else if (b1 == '1'&& b2 == '1') {
+					// vai um (+1)
 					if (result[i] != 1) {
 						result[i] = 0;
 						result[i+1] = 1;
@@ -197,9 +199,140 @@ public class Calculadora {
 			}
 		}else if (texto.contains("-")) {
 			// subtração
+			String[] array = texto.split("-");
+			builder.append(array[0]);
+			array[0] = builder.reverse().toString();
+			builder.delete(0, builder.length());
+			builder.append(array[1]);
+			array[1] = builder.reverse().toString();
+			builder.delete(0, builder.length());
 
+			byte[] result = new byte[array[0].length()];
+
+			for (int i = 0; i < result.length; i++) {
+				char b1;
+				char b2;
+				if (array[0].length() > i) {
+					b1 = array[0].charAt(i);
+				} else {
+					b1 = '0';
+				}
+				if (array[1].length() > i) {
+					b2 = array[1].charAt(i);
+				} else {
+					b2 = '0';
+				}
+				// comparação
+				if (b1 == '0'&& b2 == '0') {
+					result[i] = 0;
+				} else if (b1 == '1'&& b2 == '0') {
+					result[i] = 1;
+				} else if (b1 == '0'&& b2 == '1') {
+					// vem um (-1)
+					for (int j = 0; j < array[0].length(); j++) {
+						if (j < i) {
+							builder.append(array[0].charAt(j));
+						} else {
+							if (array[0].charAt(j) == '0') {
+								builder.append(array[0].charAt(j));
+								continue;
+							} else if (array[0].charAt(j) == '1') {
+								builder.append('0');
+								array[0] = builder.replace(j+1, array[0].length(), array[0].substring(j+1)).toString();
+								break;
+							}
+						}
+
+					}
+					result[i] = 1;
+				} else if (b1 == '1'&& b2 == '1') {
+					result[i] = 0;
+				}
+			}
+			for (int i = 0, pow = 1; i < result.length; i++, pow *= 2) {
+				value += result[i] * pow;
+			}
 		}else {
 			// multiplicação
+			String[] array = texto.split("\\*");
+			builder.append(array[0]);
+			array[0] = builder.reverse().toString();
+			builder.delete(0, builder.length());
+			builder.append(array[1]);
+			array[1] = builder.reverse().toString();
+			builder.delete(0, builder.length());
+
+			byte[][] results;
+
+			if (array[0].length() > array[1].length()) {
+				results = new byte[array[1].length()][array[0].length() * 2];
+			}else {
+				results = new byte[array[1].length()][array[1].length() * 2];
+			}
+
+			for (int i = 0; i < results.length; i++) {
+				char b1;
+				char b2;
+				if (array[1].length() > i) {
+					b2 = array[1].charAt(i);
+				} else {
+					b2 = '0';
+				}
+				for (int j = 0; j < results[i].length-i; j++) {
+					if (array[0].length() > j) {
+						b1 = array[0].charAt(j);
+					} else {
+						b1 = '0';
+					}
+
+					if (b1 == '0'&& b2 == '0') {
+						results[i][j+i] = 0;
+					} else if ((b1 == '1'&& b2 == '0')||(b1 == '0'&& b2 == '1')) {
+						results[i][j+i] = 0;
+					} else if (b1 == '1'&& b2 == '1') {
+						results[i][j+i] = 1;
+					}
+				}
+			}
+			byte[] result = new byte[results[0].length];
+
+			for (int i = 0; i < results.length; i++) {
+				byte[] aux = new byte[results[0].length];
+				for (int j = 0; j < results[i].length; j++) {
+					byte b1 = result[j];
+					byte b2 = results[i][j];
+					byte bAux = aux[j];
+					if (b1 == 1 && b2 == 1) {
+						if (bAux == 1) {
+							aux[j+1] = 1;
+							aux[j] = 1;
+						}else {
+							aux[j+1] = 1;
+							aux[j] = 0;
+						}
+					} else if (b1 == 1 || b2 == 1) {
+						if (bAux == 1) {
+							aux[j+1] = 1;
+							aux[j] = 0;
+						}else {
+							aux[j] = 1;
+						}
+					}else {
+						if (bAux == 1) {
+							aux[j] = 1;
+						}else {
+							aux[j] = 0;
+						}
+					}
+				}
+				System.out.println("1 "+Arrays.toString(result));
+				System.out.println("2 "+Arrays.toString(results[i]));
+				System.out.println("3 "+Arrays.toString(aux));
+				result = aux;
+			}
+			for (int i = 0, pow = 1; i < result.length; i++, pow *= 2) {
+				value += result[i] * pow;
+			}
 
 		}
 	}
