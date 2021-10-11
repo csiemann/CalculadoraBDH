@@ -3,6 +3,10 @@ import java.awt.GridLayout;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.Comparator;
+import java.util.HashMap;
 
 import javax.swing.BorderFactory;
 import javax.swing.JFormattedTextField;
@@ -429,11 +433,44 @@ public class Calculadora {
 
 		private String writeTable(String text) {
 			String message = "";
-			ArrayList<Character> variable = new ArrayList<>();
+			ArrayList<Character> variaveis = new ArrayList<>();
+			String textoV = text.replaceAll("(\\d|\\W)", "").toUpperCase();
+			for (char character : textoV.toCharArray()) {
+				if (!variaveis.contains(character)) {
+					variaveis.add(character);
+				}
+			}
+			variaveis.sort(new Comparator<Character>() {
+				@Override
+				public int compare(Character o1, Character o2) {
+					return o1.compareTo(o2);
+				}
+			});
+			int size = variaveis.size();
+			int possibilidades = 1 << size;
+			System.out.println(size);
+			System.out.println(possibilidades);
+			System.out.println(Arrays.toString(variaveis.toArray()));
+			int mask = 1<<size-1;
+			for (int possibilidade = 0; possibilidade < possibilidades; possibilidade++) {
+				String textP = text;
+				int p = possibilidade;
+				for (int variavel = 0 ; variavel < size; variavel ++) {
+					Character v = variaveis.get(size-variavel-1);
+					textP = textP.replace(v, (p & mask)==0?'0':'1');
+					p <<= 1;
+				}
+				System.out.println(textP+" "+(char)resolve(textP));
+			}
+
+
 
 			return null;
 		}
+		private char resolve(String textP) {
 
+			return '0';
+		}
 		@Override
 		public void keyReleased(KeyEvent e) {
 
