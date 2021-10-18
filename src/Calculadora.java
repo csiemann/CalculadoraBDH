@@ -2,18 +2,18 @@ import java.awt.BorderLayout;
 import java.awt.GridLayout;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.BitSet;
 import java.util.Comparator;
-import java.util.HashMap;
 
 import javax.swing.BorderFactory;
 import javax.swing.JFormattedTextField;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
@@ -53,7 +53,7 @@ public class Calculadora {
 		panelGate.setLayout(new GridLayout(3,1,10,10));
 		JLabel gate  = new JLabel("<html><p style=\"text-align:center;\">Gates (resultado em result.txt)<br>!=NOT |=OR &=AND 0=F 1=V</p></html>", SwingConstants.CENTER);
 		JLabel message  = new JLabel("", SwingConstants.CENTER);
-		JTextField gates = new JTextField();
+		JFormattedTextField gates = new JFormattedTextField();
 		panelGate.add(gate);
 		panelGate.add(gates);
 		panelGate.add(message);
@@ -65,7 +65,7 @@ public class Calculadora {
 		binary.addKeyListener(new CalculadoraKeyListener(binary, decimal, hexa));
 		decimal.addKeyListener(new CalculadoraKeyListener(binary, decimal, hexa));
 		hexa.addKeyListener(new CalculadoraKeyListener(binary, decimal, hexa));
-		gates.addKeyListener(null);
+		gates.addKeyListener(new GateKeyListener(message));
 	}
 
 	public static class CalculadoraDocument extends PlainDocument {
@@ -426,15 +426,25 @@ public class Calculadora {
 		public void keyPressed(KeyEvent e) {
 			char c = e.getKeyChar();
 			if (c == KeyEvent.VK_ENTER) {
-				String message = writeTable(((JFormattedTextField)e.getComponent()).getText());
-
+				String message = "";
+				try {
+					message = writeTable(((JFormattedTextField)e.getComponent()).getText());
+				} catch (IOException e1) {
+				}
+				this.message.setText(message);
 			}
 		}
 
-		private String writeTable(String text) {
+		private String writeTable(String text) throws IOException {
 			String message = "";
+			File result = new File("results.txt");
+			FileWriter writer = new FileWriter(result);
+			BufferedWriter buffer = new BufferedWriter(writer);
 			ArrayList<Character> variaveis = new ArrayList<>();
-			String textoV = text.replaceAll("(\\d|\\W)", "").toUpperCase();
+			text = text.toUpperCase();
+			String textoV = text.replaceAll("(\\d|\\W)", "");
+
+
 			for (char character : textoV.toCharArray()) {
 				if (!variaveis.contains(character)) {
 					variaveis.add(character);
@@ -448,28 +458,82 @@ public class Calculadora {
 			});
 			int size = variaveis.size();
 			int possibilidades = 1 << size;
-			System.out.println(size);
-			System.out.println(possibilidades);
-			System.out.println(Arrays.toString(variaveis.toArray()));
-			int mask = 1<<size-1;
+			int mask = 1 << size-1;
+
+			for (int variavel = 0 ; variavel < size; variavel ++) {
+				Character v = variaveis.get(size-variavel-1);
+				buffer.append(v+"|");
+			}
+			// escreve a fórmula que será resolvida com chaves (ex: input = A|X output = [A|X])
+			buffer.append("["+text+"]\n");
 			for (int possibilidade = 0; possibilidade < possibilidades; possibilidade++) {
 				String textP = text;
 				int p = possibilidade;
 				for (int variavel = 0 ; variavel < size; variavel ++) {
 					Character v = variaveis.get(size-variavel-1);
-					textP = textP.replace(v, (p & mask)==0?'0':'1');
+					char r = (p & mask)==0?'0':'1';
+					textP = textP.replace(v, r);
 					p <<= 1;
+					// aqui é para cada variável em sequencia para cada possibilidade
+					buffer.append(r+"|");
 				}
-				System.out.println(textP+" "+(char)resolve(textP));
+				StringBuilder builder = new StringBuilder(textP);
+				while (builder.length() > 1) {
+					int f = builder.indexOf(")");
+					int i = -1;
+					if (f > 0) {
+						i = builder.substring(0, f).lastIndexOf("(");
+					}
+					if (i > -1) {
+						String re = resolve(builder.substring(i+1, f));
+						if (re == null) {
+							message = "<html><p style=\"text-align:center;color:green;\">Erro ao resolver!</p></html>";
+							break;
+						}else {
+							builder.replace(i, f+1, re);
+						}
+					}else if (builder.length() > 1) {
+						String re = resolve(builder.toString());
+						if (re == null) {
+							message = "<html><p style=\"text-align:center;color:green;\">Erro ao resolver!</p></html>";
+							break;
+						}else {
+							builder = new StringBuilder(re);
+						}
+					}
+				}
+				// aqui é a solução de cada possibilidade
+				buffer.append(builder.toString()+"\n");
 			}
-
-
-
-			return null;
+			buffer.close();
+			writer.close();
+			if (!message.isEmpty()) {
+				message = "<html><p style=\"text-align:center;color:green;\">Feito a tabela</p></html>";
+			}
+			return message;
 		}
-		private char resolve(String textP) {
+		private String resolve(String textP) {
+			textP = textP.replace("!0", "1");
+			textP = textP.replace("!1", "0");
+			while (textP.length() > 1) {
 
-			return '0';
+				int o = textP.indexOf("|");
+				int a = textP.indexOf("&");
+				if ((a <= o || o < 0) && a >= 0 ) {
+					textP = textP.replace("0&0", "0");
+					textP = textP.replace("0&1", "0");
+					textP = textP.replace("1&0", "0");
+					textP = textP.replace("1&1", "1");
+				}else if((o <= a || a < 0) && o >= 0 ) {
+					textP = textP.replace("0|0", "0");
+					textP = textP.replace("0|1", "1");
+					textP = textP.replace("1|0", "1");
+					textP = textP.replace("1|1", "1");
+				}else if (a < 0 && o < 0) {
+					return null;
+				}
+			}
+			return textP;
 		}
 		@Override
 		public void keyReleased(KeyEvent e) {
