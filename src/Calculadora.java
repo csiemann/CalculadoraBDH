@@ -93,6 +93,7 @@ public class Calculadora {
 			}
 		}
 
+
 	}
 	public static class CalculadoraKeyListener implements KeyListener {
 
@@ -141,7 +142,7 @@ public class Calculadora {
 		}
 
 		private void convert(JFormattedTextField prin) {
-			String text = prin.getText();
+			String text = prin.getText().toUpperCase();
 			if (prin.equals(binary)) {
 				value = 0;
 				int pow = 1;
@@ -161,9 +162,7 @@ public class Calculadora {
 				for (int i = text.length(); i > 0 ; i--) {
 					char chara = text.charAt(i-1);
 					int b = 0;
-					if (chara >= 'a' && chara <= 'f') {
-						b = chara - 87;
-					}else if (chara >= 'A' && chara <= 'F') {
+					if (chara >= 'A' && chara <= 'F') {
 						b = chara - 55;
 					}else {
 						b = Character.getNumericValue(chara);
@@ -182,9 +181,11 @@ public class Calculadora {
 				// soma
 				byte[] result;
 				String[] array = texto.split("\\+");
+
 				builder.append(array[0]);
 				array[0] = builder.reverse().toString();
 				builder.delete(0, builder.length());
+
 				builder.append(array[1]);
 				array[1] = builder.reverse().toString();
 				builder.delete(0, builder.length());
@@ -207,6 +208,7 @@ public class Calculadora {
 					} else {
 						b2 = '0';
 					}
+
 					// comparação (soma)
 					if (b1 == '0'&& b2 == '0') {
 						if (result[i] != 1) {
@@ -225,7 +227,6 @@ public class Calculadora {
 							result[i] = 0;
 							result[i+1] = 1;
 						} else {
-							result[i] = 1;
 							result[i+1] = 1;
 						}
 					}
@@ -321,11 +322,7 @@ public class Calculadora {
 							b1 = '0';
 						}
 
-						if (b1 == '0'&& b2 == '0') {
-							results[i][j+i] = 0;
-						} else if ((b1 == '1'&& b2 == '0')||(b1 == '0'&& b2 == '1')) {
-							results[i][j+i] = 0;
-						} else if (b1 == '1'&& b2 == '1') {
+						if (b1 == '1'&& b2 == '1') {
 							results[i][j+i] = 1;
 						}
 					}
@@ -340,24 +337,18 @@ public class Calculadora {
 						byte bAux = aux[j];
 						if (b1 == 1 && b2 == 1) {
 							if (bAux == 1) {
-								aux[j+1] = 1;
 								aux[j] = 1;
-							}else {
 								aux[j+1] = 1;
+							}else {
 								aux[j] = 0;
+								aux[j+1] = 1;
 							}
 						} else if (b1 == 1 || b2 == 1) {
 							if (bAux == 1) {
+								aux[j] = 0;
 								aux[j+1] = 1;
-								aux[j] = 0;
 							}else {
 								aux[j] = 1;
-							}
-						}else {
-							if (bAux == 1) {
-								aux[j] = 1;
-							}else {
-								aux[j] = 0;
 							}
 						}
 					}
@@ -366,7 +357,6 @@ public class Calculadora {
 				for (int i = 0, pow = 1; i < result.length; i++, pow *= 2) {
 					value += result[i] * pow;
 				}
-
 			}
 		}
 		private String toBinary() {
@@ -424,6 +414,10 @@ public class Calculadora {
 
 		@Override
 		public void keyPressed(KeyEvent e) {
+		}
+
+		@Override
+		public void keyReleased(KeyEvent e) {
 			char c = e.getKeyChar();
 			if (c == KeyEvent.VK_ENTER) {
 				String message = "";
@@ -452,8 +446,8 @@ public class Calculadora {
 			}
 			variaveis.sort(new Comparator<Character>() {
 				@Override
-				public int compare(Character o1, Character o2) {
-					return o1.compareTo(o2);
+				public int compare(Character c1, Character c2) {
+					return c2.compareTo(c1);
 				}
 			});
 			int size = variaveis.size();
@@ -487,7 +481,7 @@ public class Calculadora {
 					if (i > -1) {
 						String re = resolve(builder.substring(i+1, f));
 						if (re == null) {
-							message = "<html><p style=\"text-align:center;color:green;\">Erro ao resolver!</p></html>";
+							message = "<html><p style=\"text-align:center;color:red;\">Erro ao resolver!</p></html>";
 							break;
 						}else {
 							builder.replace(i, f+1, re);
@@ -495,7 +489,7 @@ public class Calculadora {
 					}else if (builder.length() > 1) {
 						String re = resolve(builder.toString());
 						if (re == null) {
-							message = "<html><p style=\"text-align:center;color:green;\">Erro ao resolver!</p></html>";
+							message = "<html><p style=\"text-align:center;color:red;\">Erro ao resolver!</p></html>";
 							break;
 						}else {
 							builder = new StringBuilder(re);
@@ -507,8 +501,10 @@ public class Calculadora {
 			}
 			buffer.close();
 			writer.close();
-			if (!message.isEmpty()) {
+			if (message.isEmpty()) {
 				message = "<html><p style=\"text-align:center;color:green;\">Feito a tabela</p></html>";
+			}else {
+				result.delete();
 			}
 			return message;
 		}
@@ -520,25 +516,24 @@ public class Calculadora {
 				int o = textP.indexOf("|");
 				int a = textP.indexOf("&");
 				if ((a <= o || o < 0) && a >= 0 ) {
-					textP = textP.replace("0&0", "0");
-					textP = textP.replace("0&1", "0");
-					textP = textP.replace("1&0", "0");
-					textP = textP.replace("1&1", "1");
+					int a1 = textP.indexOf("1&1");
+					if (a1 <= a && a1 >= 0) {
+						textP = textP.replaceFirst("1&1", "1");
+					}else {
+						textP = textP.replaceFirst("0&1|1&0|0&0", "0");
+					}
 				}else if((o <= a || a < 0) && o >= 0 ) {
-					textP = textP.replace("0|0", "0");
-					textP = textP.replace("0|1", "1");
-					textP = textP.replace("1|0", "1");
-					textP = textP.replace("1|1", "1");
+					int o1 = textP.indexOf("0|0");
+					if (o1 <= o && o1 >= 0) {
+						textP = textP.replaceFirst("0\\|0", "0");
+					}else {
+						textP = textP.replaceFirst("0\\|1|1\\|0|1\\|1", "1");
+					}
 				}else if (a < 0 && o < 0) {
 					return null;
 				}
 			}
 			return textP;
 		}
-		@Override
-		public void keyReleased(KeyEvent e) {
-
-		}
-
 	}
 }
