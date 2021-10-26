@@ -1,5 +1,7 @@
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.io.BufferedWriter;
@@ -10,17 +12,19 @@ import java.util.ArrayList;
 import java.util.Comparator;
 
 import javax.swing.BorderFactory;
+import javax.swing.ButtonGroup;
 import javax.swing.JFormattedTextField;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JRadioButton;
 import javax.swing.SwingConstants;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.PlainDocument;
 
 public class Calculadora {
-	static int value = 0;
+	static int value1 = 0,value2 = 0;
 
 	public static void main(String[] args) {
 		JFrame frame = new JFrame("Conversor");
@@ -28,43 +32,42 @@ public class Calculadora {
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setLocationRelativeTo(null);
 		JPanel panel = new JPanel();
-		panel.setLayout(new GridLayout(2,3,10,10));
+		JPanel panelButton = new JPanel();
+		panel.setLayout(new GridLayout(5,1,10,10));
+		panelButton.setLayout(new GridLayout(1,3,10,10));
 
-		JLabel b = new JLabel("Binário", SwingConstants.CENTER);
-		JLabel d = new JLabel("Decimal", SwingConstants.CENTER);
-		JLabel h  = new JLabel("Hexadecimal", SwingConstants.CENTER);
-		JFormattedTextField binary = new JFormattedTextField();
-		JFormattedTextField decimal = new JFormattedTextField();
-		JFormattedTextField hexa = new JFormattedTextField();
-		binary.setDocument(new CalculadoraDocument("01+-*"));
-		decimal.setDocument(new CalculadoraDocument("0123456789"));
-		hexa.setDocument(new CalculadoraDocument("0123456789abcdefABCDEF"));
+		JFormattedTextField calculadora = new JFormattedTextField();
+		BasesRadioButton binario = new BasesRadioButton("Binário",2);
+		BasesRadioButton decimal = new BasesRadioButton("Decimal", true, 10);
+		calculadora.setDocument(new CalculadoraDocument("0123456789+-*/"));
+		BasesRadioButton hexa = new BasesRadioButton("Hexadecimal", 16);
+		ButtonGroup grupo = new ButtonGroup();
 		frame.setSize(500,500);
 		frame.add(panel, BorderLayout.NORTH);
-		panel.add(b);
-		panel.add(d);
-		panel.add(h);
-		panel.add(binary);
-		panel.add(decimal);
-		panel.add(hexa);
+		panel.add(calculadora);
+		panel.add(panelButton);
+		panelButton.add(binario);
+		panelButton.add(decimal);
+		panelButton.add(hexa);
+		grupo.add(binario);
+		grupo.add(decimal);
+		grupo.add(hexa);
 		panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-		JPanel panelGate = new JPanel();
-		panelGate.setLayout(new GridLayout(3,1,10,10));
 		JLabel gate  = new JLabel("<html><p style=\"text-align:center;\">Gates (resultado em result.txt)<br>!=NOT |=OR &=AND 0=F 1=V</p></html>", SwingConstants.CENTER);
 		JLabel message  = new JLabel("", SwingConstants.CENTER);
 		JFormattedTextField gates = new JFormattedTextField();
-		panelGate.add(gate);
-		panelGate.add(gates);
-		panelGate.add(message);
-		frame.add(panelGate,BorderLayout.SOUTH);
-		panelGate.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+		panel.add(gate);
+		panel.add(gates);
+		panel.add(message);
 
 		frame.pack();
 		frame.setVisible(true);
-		binary.addKeyListener(new CalculadoraKeyListener(binary, decimal, hexa));
-		decimal.addKeyListener(new CalculadoraKeyListener(binary, decimal, hexa));
-		hexa.addKeyListener(new CalculadoraKeyListener(binary, decimal, hexa));
+		calculadora.addKeyListener(new CalculadoraKeyListener(binario,decimal,hexa));
+		BaseItemListener itemL = new BaseItemListener(calculadora);
+		binario.addItemListener(itemL);
+		decimal.addItemListener(itemL);
+		hexa.addItemListener(itemL);
 		gates.addKeyListener(new GateKeyListener(message));
 	}
 
@@ -96,14 +99,10 @@ public class Calculadora {
 
 	}
 	public static class CalculadoraKeyListener implements KeyListener {
+		BasesRadioButton binario,decimal,hexa;
 
-		private JFormattedTextField binary;
-		private JFormattedTextField decimal;
-		private JFormattedTextField hexa;
-
-		public CalculadoraKeyListener(JFormattedTextField binary, JFormattedTextField decimal, JFormattedTextField hexa) {
-			super();
-			this.binary = binary;
+		public CalculadoraKeyListener(BasesRadioButton binario,BasesRadioButton decimal,BasesRadioButton hexa) {
+			this.binario = binario;
 			this.decimal = decimal;
 			this.hexa = hexa;
 		}
@@ -115,287 +114,56 @@ public class Calculadora {
 		@Override
 		public void keyReleased(KeyEvent e) {
 			char c = e.getKeyChar();
-			if (c == KeyEvent.VK_ENTER) {
-				if (validateText(((JFormattedTextField)e.getComponent()).getText(), "+-*")) {
-					calculate((JFormattedTextField)e.getComponent());
+			JFormattedTextField field = (JFormattedTextField)e.getComponent();
+			String textA = field.getText();
+			if (textA.matches("[^+\\-*/]+[+\\-*/][^+\\-*/]+")) {
+				String[] array = textA.split("[+\\-*/()]");
+				if (binario.isSelected()) {
+					value1 = convertBase(array[0], 2);
+					value2 = convertBase(array[1], 2);
+				}else if (decimal.isSelected()) {
+					value1 = convertBase(array[0], 10);
+					value2 = convertBase(array[1], 10);
 				}else {
-					convert((JFormattedTextField)e.getComponent());
+					value1 = convertBase(array[0], 16);
+					value2 = convertBase(array[1], 16);
 				}
-				binary.setText(toBinary());
-				decimal.setText(""+value);
-				hexa.setText(toHexa());
+			}
+			if (c == KeyEvent.VK_ENTER) {
+				char[] arrayOper = field.getText().replaceAll("[^+\\-*/()]+", "").toCharArray();
+				if (arrayOper.length == 1) {
+					int result = 0;
+					if (arrayOper[0] == '+') {
+						result = value1 + value2;
+					}else if (arrayOper[0] == '-') {
+						if (value1 >= value2) {
+							result = value1 - value2;
+						} else {
+							result = value2 - value1;
+						}
+					}else if (arrayOper[0] == '*') {
+						result = value1 * value2;
+					}else if (arrayOper[0] == '/') {
+						result = value1 / value2;
+					}
+
+					String re = "";
+
+					if (binario.isSelected()) {
+						re = toBinary(result);
+					}else if (decimal.isSelected()) {
+						re = ""+result;
+					}else {
+						re = toHexa(result);
+					}
+
+					field.setText(re);
+				}
 			}
 		}
 
 		@Override
 		public void keyPressed(KeyEvent e) {
-		}
-
-		private boolean validateText(String texto, String comp) {
-			for (int i = 0; i < texto.length(); i++) {
-				String s = ""+texto.charAt(i);
-				if (comp.contains(s)) {
-					return true;
-				}
-			}
-			return false;
-		}
-
-		private void convert(JFormattedTextField prin) {
-			String text = prin.getText().toUpperCase();
-			if (prin.equals(binary)) {
-				value = 0;
-				int pow = 1;
-				for (int i = text.length(); i > 0 ; i--) {
-					int b = Character.getNumericValue(text.charAt(i-1));
-					value += b * pow;
-					pow *= 2;
-				}
-			}else if (prin.equals(decimal)) {
-				try {
-					value = Integer.parseInt(text);
-				}catch (Exception e) {
-				}
-			}else if (prin.equals(hexa)) {
-				value = 0;
-				int base = 1;
-				for (int i = text.length(); i > 0 ; i--) {
-					char chara = text.charAt(i-1);
-					int b = 0;
-					if (chara >= 'A' && chara <= 'F') {
-						b = chara - 55;
-					}else {
-						b = Character.getNumericValue(chara);
-					}
-					value += b * base;
-					base *= 16;
-				}
-			}
-		}
-
-		private void calculate(JFormattedTextField prin) {
-			String texto = prin.getText();
-			StringBuilder builder = new StringBuilder();
-			value = 0;
-			if (texto.contains("+")) {
-				// soma
-				byte[] result;
-				String[] array = texto.split("\\+");
-
-				builder.append(array[0]);
-				array[0] = builder.reverse().toString();
-				builder.delete(0, builder.length());
-
-				builder.append(array[1]);
-				array[1] = builder.reverse().toString();
-				builder.delete(0, builder.length());
-
-				if (array[0].length() > array[1].length()) {
-					result = new byte[array[0].length()+1];
-				}else {
-					result = new byte[array[1].length()+1];
-				}
-				for (int i = 0; i < result.length-1; i++) {
-					char b1;
-					char b2;
-					if (array[0].length() > i) {
-						b1 = array[0].charAt(i);
-					} else {
-						b1 = '0';
-					}
-					if (array[1].length() > i) {
-						b2 = array[1].charAt(i);
-					} else {
-						b2 = '0';
-					}
-
-					// comparação (soma)
-					if (b1 == '0'&& b2 == '0') {
-						if (result[i] != 1) {
-							result[i] = 0;
-						}
-					} else if ((b1 == '1'&& b2 == '0')||(b1 == '0'&& b2 == '1')) {
-						if (result[i] != 1) {
-							result[i] = 1;
-						} else {
-							result[i] = 0;
-							result[i+1] = 1;
-						}
-					} else if (b1 == '1'&& b2 == '1') {
-						// vai um (+1)
-						if (result[i] != 1) {
-							result[i] = 0;
-							result[i+1] = 1;
-						} else {
-							result[i+1] = 1;
-						}
-					}
-				}
-				for (int i = 0, pow = 1; i < result.length; i++, pow *= 2) {
-					value += result[i] * pow;
-				}
-			}else if (texto.contains("-")) {
-				// subtração
-				String[] array = texto.split("-");
-				builder.append(array[0]);
-				array[0] = builder.reverse().toString();
-				builder.delete(0, builder.length());
-				builder.append(array[1]);
-				array[1] = builder.reverse().toString();
-				builder.delete(0, builder.length());
-
-				byte[] result = new byte[array[0].length()];
-
-				for (int i = 0; i < result.length; i++) {
-					char b1;
-					char b2;
-					if (array[0].length() > i) {
-						b1 = array[0].charAt(i);
-					} else {
-						b1 = '0';
-					}
-					if (array[1].length() > i) {
-						b2 = array[1].charAt(i);
-					} else {
-						b2 = '0';
-					}
-					// comparação
-					if (b1 == '0'&& b2 == '0') {
-						result[i] = 0;
-					} else if (b1 == '1'&& b2 == '0') {
-						result[i] = 1;
-					} else if (b1 == '0'&& b2 == '1') {
-						// vem um (-1)
-						for (int j = 0; j < array[0].length(); j++) {
-							if (j < i) {
-								builder.append(array[0].charAt(j));
-							} else {
-								if (array[0].charAt(j) == '0') {
-									builder.append(array[0].charAt(j));
-									continue;
-								} else if (array[0].charAt(j) == '1') {
-									builder.append('0');
-									array[0] = builder.replace(j+1, array[0].length(), array[0].substring(j+1)).toString();
-									break;
-								}
-							}
-
-						}
-						result[i] = 1;
-					} else if (b1 == '1'&& b2 == '1') {
-						result[i] = 0;
-					}
-				}
-				for (int i = 0, pow = 1; i < result.length; i++, pow *= 2) {
-					value += result[i] * pow;
-				}
-			}else if (texto.contains("*")){
-				// multiplicação
-				String[] array = texto.split("\\*");
-				builder.append(array[0]);
-				array[0] = builder.reverse().toString();
-				builder.delete(0, builder.length());
-				builder.append(array[1]);
-				array[1] = builder.reverse().toString();
-				builder.delete(0, builder.length());
-
-				byte[][] results;
-
-				if (array[0].length() > array[1].length()) {
-					results = new byte[array[1].length()][array[0].length() * 2];
-				}else {
-					results = new byte[array[1].length()][array[1].length() * 2];
-				}
-
-				for (int i = 0; i < results.length; i++) {
-					char b1;
-					char b2;
-					if (array[1].length() > i) {
-						b2 = array[1].charAt(i);
-					} else {
-						b2 = '0';
-					}
-					for (int j = 0; j < results[i].length-i; j++) {
-						if (array[0].length() > j) {
-							b1 = array[0].charAt(j);
-						} else {
-							b1 = '0';
-						}
-
-						if (b1 == '1'&& b2 == '1') {
-							results[i][j+i] = 1;
-						}
-					}
-				}
-				byte[] result = new byte[results[0].length];
-
-				for (int i = 0; i < results.length; i++) {
-					byte[] aux = new byte[results[0].length];
-					for (int j = 0; j < results[i].length; j++) {
-						byte b1 = result[j];
-						byte b2 = results[i][j];
-						byte bAux = aux[j];
-						if (b1 == 1 && b2 == 1) {
-							if (bAux == 1) {
-								aux[j] = 1;
-								aux[j+1] = 1;
-							}else {
-								aux[j] = 0;
-								aux[j+1] = 1;
-							}
-						} else if (b1 == 1 || b2 == 1) {
-							if (bAux == 1) {
-								aux[j] = 0;
-								aux[j+1] = 1;
-							}else {
-								aux[j] = 1;
-							}
-						}
-					}
-					result = aux;
-				}
-				for (int i = 0, pow = 1; i < result.length; i++, pow *= 2) {
-					value += result[i] * pow;
-				}
-			}
-		}
-		private String toBinary() {
-			int a = value;
-			StringBuilder builder = new StringBuilder();
-			if (a == 0) {
-				return "0";
-			}
-			while(a != 0) {
-				if ((a % 2 != 0)) {
-					builder.append("1");
-					a--;
-				}else {
-					builder.append("0");
-				}
-				a /= 2;
-			}
-			return builder.reverse().toString();
-		}
-		private String toHexa() {
-			int a = value;
-			StringBuilder builder = new StringBuilder();
-			if (a == 0) {
-				return "0";
-			}
-			while(a != 0) {
-				if ((a % 16 != 0)) {
-					if(a % 16 > 9) {
-						builder.append((char)(55+(a % 16)));
-					}else {
-						builder.append(a % 16);
-					}
-					a -= a % 16;
-				}else {
-					builder.append("0");
-				}
-				a /= 16;
-			}
-			return builder.reverse().toString();
 		}
 	}
 	public static class GateKeyListener implements KeyListener {
@@ -535,5 +303,158 @@ public class Calculadora {
 			}
 			return textP;
 		}
+	}
+
+	public static class BasesRadioButton extends JRadioButton {
+		/**
+		 *
+		 */
+		private static final long serialVersionUID = 1L;
+		private int base;
+
+		public BasesRadioButton(String text, int base) {
+			super(text);
+			this.base = base;
+		}
+
+		public BasesRadioButton(String text, boolean selected, int base) {
+			super(text, selected);
+			this.base = base;
+		}
+
+		public String convert(String textA, int lastBase) {
+			StringBuilder builder = new StringBuilder();
+			if (textA.matches("[^+\\-*/]+")) {
+				if (base == 10) {
+					builder.append(""+convertBase(textA, lastBase));
+				}else if (base == 2) {
+					builder.append(toBinary(convertBase(textA, lastBase)));
+				}else if (base == 16) {
+					builder.append(toHexa(convertBase(textA, lastBase)));
+				}
+				return builder.toString();
+			}else if (textA.isEmpty()) {
+				return "";
+			}
+			char[] arrayOper = textA.replaceAll("[^+\\-*/()]+", "").toCharArray();
+			if (base == 10) {
+				builder.append(""+value1+arrayOper[0]+value2);
+			}else if (base == 2) {
+				builder.append(toBinary(value1)+arrayOper[0]+toBinary(value2));
+			}else if (base == 16) {
+				builder.append(toHexa(value1)+arrayOper[0]+toHexa(value2));
+			}
+
+			return builder.toString();
+		}
+
+		public int getBase() {
+			return base;
+		}
+	}
+
+	static private int convertBase(String text, int lastBase) {
+		int value = 0;
+		if (lastBase == 2) {
+			int pow = 1;
+			for (int i = text.length(); i > 0 ; i--) {
+				int b = Character.getNumericValue(text.charAt(i-1));
+				value += b * pow;
+				pow *= 2;
+			}
+		}else if (lastBase == 10) {
+			try {
+				value = Integer.parseInt(text);
+			}catch (Exception e) {
+			}
+		}else if (lastBase == 16) {
+			int base = 1;
+			for (int i = text.length(); i > 0 ; i--) {
+				char chara = text.charAt(i-1);
+				int b = 0;
+				if (chara >= 'A' && chara <= 'F') {
+					b = chara - 55;
+				}else {
+					b = Character.getNumericValue(chara);
+				}
+				value += b * base;
+				base *= 16;
+			}
+		}
+		return value;
+	}
+
+	static private String toBinary(int value) {
+		StringBuilder builder = new StringBuilder();
+		if (value == 0) {
+			return "0";
+		}
+		while(value != 0) {
+			if ((value % 2 != 0)) {
+				builder.append("1");
+				value--;
+			}else {
+				builder.append("0");
+			}
+			value /= 2;
+		}
+		return builder.reverse().toString();
+	}
+
+	static private String toHexa(int value) {
+		StringBuilder builder = new StringBuilder();
+		if (value == 0) {
+			return "0";
+		}
+		while(value != 0) {
+			if ((value % 16 != 0)) {
+				if(value % 16 > 9) {
+					builder.append((char)(55+(value % 16)));
+				}else {
+					builder.append(value % 16);
+				}
+				value -= value % 16;
+			}else {
+				builder.append("0");
+			}
+			value /= 16;
+		}
+		return builder.reverse().toString();
+	}
+
+	public static class BaseItemListener implements ItemListener{
+
+		private JFormattedTextField field;
+		private int lastBase;
+
+		public BaseItemListener(JFormattedTextField field) {
+			this.field = field;
+		}
+
+		@Override
+		public void itemStateChanged(ItemEvent e) {
+
+			if (e.getItem() instanceof BasesRadioButton) {
+				BasesRadioButton button = (BasesRadioButton)e.getItem();
+				if (button.isSelected()) {
+					int a = button.getBase();
+					String textA = field.getText();
+					String text = button.convert(textA, lastBase);
+					if (a == 2) {
+						field.setDocument(new CalculadoraDocument("01+-*/"));
+					}else if (a == 10) {
+						field.setDocument(new CalculadoraDocument("0123456789+-*/"));
+					}else if (a == 16) {
+						field.setDocument(new CalculadoraDocument("0123456789abcdefABCDEF+-*/"));
+					}
+					field.setText(text);
+				}else {
+					lastBase = button.getBase();
+				}
+
+			}
+
+		}
+
 	}
 }
