@@ -22,7 +22,7 @@ import com.br.csiemann.swing.GateKeyListener;
  * @author Caetano Siemann
  */
 public class Calculadora {
-	int value1, value2;
+	private int value1, value2;
 
 	public Calculadora() {
 		this.value1 = 0;
